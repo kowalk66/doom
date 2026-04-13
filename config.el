@@ -120,6 +120,40 @@
 (after! corfu
   (setq corfu-auto nil))
 
+;;; :tools tree-sitter
+(defun kk/js-ts-mode-disable-jsdoc-range-h ()
+  "Disable embedded jsdoc ranges in `js-ts-mode` on Emacs 30.2.
+
+Emacs 30.2 ships a jsdoc range query that fails against Doom's newer
+JavaScript grammar pins."
+  (when (string-prefix-p "30.2" emacs-version)
+    (setq-local treesit-range-settings nil)))
+
+(defun kk/treesit-javascript-font-lock-level-a (fn &rest args)
+  "Lower JS tree-sitter font-lock during mode setup on Emacs 30.2."
+  (if (string-prefix-p "30.2" emacs-version)
+      (let ((treesit-font-lock-level 2))
+        (apply fn args))
+    (apply fn args)))
+
+(after! js
+  (unless (advice-member-p #'kk/treesit-javascript-font-lock-level-a 'js-ts-mode)
+    (advice-add 'js-ts-mode :around #'kk/treesit-javascript-font-lock-level-a))
+  (add-hook 'js-ts-mode-hook #'kk/js-ts-mode-disable-jsdoc-range-h))
+
+(defun kk/treesit-typescript-font-lock-level-a (fn &rest args)
+  "Lower TS/TSX tree-sitter font-lock during mode setup.
+
+Work around Emacs 30.2 query failures with newer TypeScript grammars."
+  (let ((treesit-font-lock-level 2))
+    (apply fn args)))
+
+(after! typescript-ts-mode
+  (unless (advice-member-p #'kk/treesit-typescript-font-lock-level-a 'typescript-ts-mode)
+    (advice-add 'typescript-ts-mode :around #'kk/treesit-typescript-font-lock-level-a))
+  (unless (advice-member-p #'kk/treesit-typescript-font-lock-level-a 'tsx-ts-mode)
+    (advice-add 'tsx-ts-mode :around #'kk/treesit-typescript-font-lock-level-a)))
+
 ;;; :ui modeline
 ;; An evil mode indicator is redundant with cursor shape
 (setq doom-modeline-modal nil)
